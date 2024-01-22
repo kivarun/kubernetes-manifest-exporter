@@ -26,3 +26,5 @@ for ns in $namespaces; do
         fi
     done
 done
+
+find $ns_dir -type d -empty -delete

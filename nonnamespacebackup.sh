@@ -28,5 +28,4 @@ for res in $non_ns_api; do
     fi
 done
 
-
-
+find $cluster_dir -type d -empty -delete
