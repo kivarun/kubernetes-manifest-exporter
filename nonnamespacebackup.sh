@@ -1,22 +1,29 @@
-#!/bin/bash
-non_ns_api=`kubectl api-resources -o name --namespaced=false`
+#!/bin/bash -e
 
-mkdir cluster
+base_dir=${1:-./}
+cluster_dir=$base_dir/cluster
+
+non_ns_api=$(kubectl api-resources -o name --namespaced=false | grep -v "tokenreviews\|selfsubjectaccessreviews\|selfsubjectrulesreviews\|subjectaccessreviews")
+
+
+[ -d $cluster_dir ] || mkdir -p $cluster_dir
 
 echo Exporting cluster resources
-for r in $non_ns_api
-do
-    names=`kubectl get $r -o name`
-    if [ -z "$names" ];
-    then
-        printf "Skipping because of empty value \n"
-    else
-        printf "Drumping $r \n\n"
-        for name in $names
-        do
-            mkdir -p `dirname cluster/$name`
-            kubectl get $name -o yaml | kubectl neat > cluster/$name.yaml
-            printf "manifest saved to cluster/$name.yaml \n"
+
+for res in $non_ns_api; do
+    names=$(kubectl get $res -o name )
+    dst_dir=$cluster_dir/$res
+    [ -d $dst_dir ] || mkdir -p $dst_dir
+
+    if [ -n "$names" ]; then
+        echo "Drumping $res"
+
+        for name in $names; do
+            dst_file=$dst_dir/${name#*/}.yaml
+
+            kubectl get $name -o yaml | kubectl neat > $dst_file
+
+            echo "manifest saved to $dst_file"
         done
     fi
 done

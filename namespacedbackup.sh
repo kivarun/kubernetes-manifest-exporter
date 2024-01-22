@@ -1,27 +1,28 @@
-#!/bin/bash
+#!/bin/bash -e 
 
-ns_api=`kubectl api-resources -o name --namespaced=true`
-namespaces=`kubectl get namespaces -o name | sed 's/namespace\// /g'`
+base_dir=${1:-./}
+ns_dir=$base_dir/namespaces
 
- echo Exporting namespaced resources
- mkdir namespaces
+ns_api=$(kubectl api-resources -o name --namespaced=true | grep -v "^bindings$\|replicasets\|events\|metrics\|pods\|localsubjectaccessreviews")
+namespaces=$(kubectl get namespaces -o name | sed 's/namespace\// /g')
 
- for n in $namespaces
- do
-     for r in $ns_api
-     do
-         names=`kubectl get $r -n $n -o name`
-         if [ -z "$names" ];
-         then
-             printf "Skipping becasue of empty value\n"
-         else
-             printf "Dumping $r in $n \n\n"
-             for name in $names
-             do
-                 mkdir -p `dirname namespaces/$n/$name`
-                 kubectl get $name -n $n -o yaml | kubectl neat > namespaces/$n/$name.yaml
-                 printf "manifest saved to namespaces/$n/$name.yaml \n"
-             done
-         fi
-     done
- done
+echo Exporting namespaced resources
+
+for ns in $namespaces; do
+    for res in $ns_api; do
+       names=$(kubectl get $res -n $ns -o name)
+        dst_dir=$ns_dir/$ns/$res
+        [ -d $dst_dir ] || mkdir -p $dst_dir
+
+        if [ -n "$names" ]; then
+            printf "Dumping $res in $ns \n\n"
+
+            for name in $names; do
+                dst_file=$dst_dir/${name#*/}.yaml
+                
+                kubectl get $name -n $ns -o yaml | kubectl neat > $dst_file
+                echo "manifest saved to $dst_file"
+            done
+        fi
+    done
+done
